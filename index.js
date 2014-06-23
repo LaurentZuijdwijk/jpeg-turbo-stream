@@ -3,6 +3,8 @@ var through = require('through2')
 var duplexer = require('duplexer2')
 var path = require('path')
 
+var EMPTY = new Buffer(0)
+
 var headerStruct = function(type, opts, buffer) {
   var header = new Buffer(16)
   var length = buffer.length + opts.length + 12
@@ -13,6 +15,14 @@ var headerStruct = function(type, opts, buffer) {
   header.writeUInt32LE(opts.length+12, 12)
 
   return header
+}
+
+var rotateStruct = function(degrees, auto) {
+  if (typeof degrees !== 'number' && auto !== false) auto = true
+  var buf = new Buffer(5)
+  buf.writeUInt32LE(degrees || 0, 0)
+  buf[4] = auto ? 1 : 0
+  return buf
 }
 
 var scaleStruct = function(wid, hei, ratio) {
@@ -35,8 +45,13 @@ var spawn = function() {
       type = 1
       break
 
+      case 'rotate':
+      opts = rotateStruct(data.degrees, data.auto)
+      type = 2
+      break
+
       default:
-      opts = new Buffer(0)
+      opts = EMPTY
       type = 0
       break
     }

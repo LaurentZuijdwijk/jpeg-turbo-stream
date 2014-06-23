@@ -12,6 +12,11 @@ typedef struct {
   unsigned char keep_ratio;
 } scale_t;
 
+typedef struct {
+  uint32_t degrees;
+  unsigned char auto_rotate;
+} rotate_t;
+
 typedef int type_fn(MagickWand *wand, void *opts);
 
 type_fn* type_to_function (int type);
