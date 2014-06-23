@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "io.h"
 
-static int read_stdin (buffer_t *b, int len) {
+static int read_stdin (io_buffer_t *b, int len) {
   if (b->size < len) {
     free(b->data);
     b->size = len;
@@ -23,13 +23,13 @@ static int read_stdin (buffer_t *b, int len) {
   return r;
 }
 
-static int to_int (buffer_t *b) {
+static int to_int (io_buffer_t *b) {
   uint32_t *p = (uint32_t*) b->data;
   return *p;
 }
 
 int io_read (int fn(int size, unsigned char *buf)) {
-  buffer_t s = {
+  io_buffer_t s = {
     .size = 1024,
     .data = malloc(1024),
     .used = 0

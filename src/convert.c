@@ -1,39 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <wand/magick_wand.h>
 #include <stdint.h>
+#include <wand/magick_wand.h>
 #include "io.h"
+#include "types.h"
 
 static MagickWand *wand;
-
-typedef int converter(void *opts);
 
 typedef struct {
   uint32_t type;
   uint32_t opts_offset;
   uint32_t data_offset;
 } header_t;
-
-typedef struct {
-  uint32_t width;
-  uint32_t height;
-} scale_t;
-
-int on_echo (void *o) {
-  return MagickPass;
-}
-
-int on_scale (void *o) {
-  scale_t *opts = (scale_t*) o;
-  return MagickScaleImage(wand, opts->width, opts->height);
-}
-
-converter *to_converter (int type) {
-  if (type == 0) return &on_echo;
-  if (type == 1) return &on_scale;
-  return NULL;
-}
 
 int parse (int size, unsigned char *data) {
   header_t *header = (header_t*) data;
@@ -46,10 +25,10 @@ int parse (int size, unsigned char *data) {
 
   if (MagickReadImageBlob(wand, data, size) != MagickPass) return -10;
 
-  converter *convert = to_converter(header->type);
+  type_fn *fn = type_to_function(header->type);
 
-  if (convert == NULL) return -11;
-  if (convert(opts) != MagickPass) return -12;
+  if (fn == NULL) return -11;
+  if (fn(wand, opts) != MagickPass) return -12;
 
   result_data = MagickWriteImageBlob(wand, &result_size);
   return io_write(result_size, result_data);
