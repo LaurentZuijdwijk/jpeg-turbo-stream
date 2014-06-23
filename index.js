@@ -33,6 +33,23 @@ var scaleStruct = function(wid, hei, ratio) {
   return buf
 }
 
+var toFormatType = function(format) {
+  switch (format.toLowerCase()) {
+    case 'jpeg':
+    case 'jpg': return 0
+    case 'gif': return 1
+    case 'png': return 2
+    case 'bmp': return 3
+  }
+  return 0
+}
+
+var convertStruct = function(format) {
+  var buf = new Buffer(4)
+  buf.writeUInt32LE(toFormatType(format), 0)
+  return buf
+}
+
 var spawn = function() {
   var input = through.obj(function(data, enc, cb) {
     var buf = data.buffer
@@ -48,6 +65,11 @@ var spawn = function() {
       case 'rotate':
       opts = rotateStruct(data.degrees, data.auto)
       type = 2
+      break
+
+      case 'convert':
+      opts = convertStruct(data.format)
+      type = 3
       break
 
       default:

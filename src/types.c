@@ -3,6 +3,7 @@
 #include "debug.h"
 
 static PixelWand *background = NULL;
+static char* formats[4] = {"JPG", "GIF", "PNG", "BMP"};
 
 int type_echo (MagickWand *wand, void *o) {
   return MagickPass;
@@ -38,6 +39,12 @@ int type_rotate (MagickWand *wand, void *o) {
   return MagickRotateImage(wand, background, opts->degrees);
 }
 
+int type_convert (MagickWand *wand, void *o) {
+  convert_t *opts = (convert_t*) o;
+  if (opts->to_format > 3) return MagickPass;
+  return MagickSetImageFormat(wand, formats[opts->to_format]);
+}
+
 int type_scale (MagickWand *wand, void *o) {
   scale_t *opts = (scale_t*) o;
 
@@ -61,6 +68,7 @@ type_fn *type_to_function (int type) {
     case 0:  return &type_echo;
     case 1:  return &type_scale;
     case 2:  return &type_rotate;
+    case 3:  return &type_convert;
     default: return NULL;
   }
 }

@@ -17,6 +17,10 @@ typedef struct {
   unsigned char auto_rotate;
 } rotate_t;
 
+typedef struct {
+  uint32_t to_format;
+} convert_t;
+
 typedef int type_fn(MagickWand *wand, void *opts);
 
 type_fn* type_to_function (int type);
