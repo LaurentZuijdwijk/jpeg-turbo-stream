@@ -1,0 +1,35 @@
+{
+  "name": "graphicsmagick-stream",
+  "version": "0.0.0",
+  "description": "Fast convertion/scaling of images using a pool of long lived graphicsmagick processes",
+  "main": "index.js",
+  "dependencies": {
+    "duplexer2": "^0.0.2",
+    "through2": "^0.5.1"
+  },
+  "devDependencies": {
+    "speedometer": "^0.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/e-conomic/graphicsmagick-stream"
+  },
+  "keywords": [
+    "gm",
+    "graphicsmagick",
+    "convert",
+    "convertion",
+    "scale",
+    "pool",
+    "stream"
+  ],
+  "scripts": {
+    "install": "make"
+  },
+  "author": "Mathias Buus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/e-conomic/graphicsmagick-stream/issues"
+  },
+  "homepage": "https://github.com/e-conomic/graphicsmagick-stream"
+}
