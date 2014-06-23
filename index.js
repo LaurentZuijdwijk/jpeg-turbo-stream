@@ -15,10 +15,11 @@ var headerStruct = function(type, opts, buffer) {
   return header
 }
 
-var scaleStruct = function(wid, hei) {
-  var buf = new Buffer(8)
+var scaleStruct = function(wid, hei, ratio) {
+  var buf = new Buffer(9)
   buf.writeUInt32LE(wid, 0)
   buf.writeUInt32LE(hei, 4)
+  buf[8] = ratio ? 1 : 0
   return buf
 }
 
@@ -30,7 +31,7 @@ var spawn = function() {
 
     switch (data.type) {
       case 'scale':
-      opts = scaleStruct(data.width, data.height)
+      opts = scaleStruct(data.width, data.height, data.ratio !== false)
       type = 1
       break
 
