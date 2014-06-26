@@ -1,6 +1,6 @@
 var proc = require('child_process')
-var duplexer = require('duplexer2')
 var once = require('once')
+var xtend = require('xtend')
 var Duplex = require('stream').Duplex
 var path = require('path')
 
@@ -204,6 +204,6 @@ module.exports = function(defaults) {
   var convert = pool({size:size})
 
   return function(opts) {
-    return convert(opts)
+    return convert(xtend(defaults, opts))
   }
 }
