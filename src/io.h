@@ -2,12 +2,12 @@
 #define IO
 
 typedef struct {
-  int used;
-  int size;
+  uint32_t used;
+  uint32_t size;
   unsigned char *data;
 } io_buffer_t;
 
-int io_read (int fn(int size, unsigned char *buf));
-int io_write (int size, unsigned char*);
+int io_read (int fn(size_t size, unsigned char *buf));
+int io_write (size_t size, unsigned char*);
 
 #endif

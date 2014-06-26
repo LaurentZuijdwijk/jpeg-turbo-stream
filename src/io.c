@@ -28,7 +28,7 @@ static int to_int (io_buffer_t *b) {
   return *p;
 }
 
-int io_read (int fn(int size, unsigned char *buf)) {
+int io_read (int fn(size_t size, unsigned char *buf)) {
   io_buffer_t s = {
     .size = 1024,
     .data = malloc(1024),
@@ -51,7 +51,7 @@ int io_read (int fn(int size, unsigned char *buf)) {
   return 0;
 }
 
-int io_write (int size, unsigned char *buf) {
+int io_write (size_t size, unsigned char *buf) {
   int r;
 
   r = write(1, &size, sizeof(uint32_t));
