@@ -2,3 +2,4 @@ node_modules
 bin
 test.png
 sandbox
+.DS_Store
