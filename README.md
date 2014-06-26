@@ -41,6 +41,15 @@ fs.createReadStream('input.jpg')
   .pipe(fs.createWriteStream('output.jpg'))
 ```
 
+## Dependencies
+
+You need to install libgraphicsmagicks in order to compile this
+On OSX using homebrew you can do
+
+```
+brew install graphicsmagick --build-from-source
+```
+
 ## License
 
 MIT
