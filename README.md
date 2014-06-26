@@ -41,6 +41,17 @@ fs.createReadStream('input.jpg')
   .pipe(fs.createWriteStream('output.jpg'))
 ```
 
+You do not need to set all the options. If you only want to scale an image do
+
+``` js
+var stream = convert({
+  scale: {
+    width: 400,
+    height: 300
+  }
+})
+```
+
 ## Dependencies
 
 You need to install libgraphicsmagicks in order to compile this
