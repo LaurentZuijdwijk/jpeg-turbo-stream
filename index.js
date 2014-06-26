@@ -1,8 +1,10 @@
 var proc = require('child_process')
-var through = require('through2')
 var duplexer = require('duplexer2')
+var once = require('once')
+var Duplex = require('stream').Duplex
 var path = require('path')
 
+var noop = function() {}
 var EMPTY = new Buffer(0)
 
 var toFormatType = function(format) {
@@ -53,47 +55,155 @@ var toStruct = function(opts) {
   return buf
 }
 
-var spawn = function() {
-  var input = through.obj(function(data, enc, cb) {
-    var buf = data.buffer
-    var opts = toStruct(data)
-
-    this.push(toUInt32LE(buf.length+opts.length))
-    this.push(opts)
-    this.push(buf)
-
-    cb()
-  })
-
-  var buffer = through()
-  var size = 0
-  var output = through.obj(function(data, enc, cb) {
-    buffer.write(data)
-
-    while (true) {
-      var want = size || 4
-      var block = buffer.read(want)
-      if (!block) return cb()
-
-      if (size) {
-        size = 0
-        this.push(block)
-      } else {
-        size = block.readUInt32LE(0)
-      }
-    }
-  })
-
-  var child = proc.spawn(path.join(__dirname, './bin/convert'))
-
-  child.stderr.pipe(process.stdout)
-
-  input.pipe(child.stdin)
-  child.stdout.pipe(output)
-
-  return duplexer(input, output)
+var destroyer = function(stream) {
+  var destroyed = false
+  return function(err) {
+    if (destroyed) return
+    if (err) stream.emit('error', err)
+    destroyed = true
+    stream.emit('close')
+  }
 }
 
-module.exports = function() {
-  return spawn()
+var pool = function(opts) {
+  if (!opts) opts = {}
+
+  var size = opts.size || 1
+  var workers = []
+  for (var i = 0; i < size; i++) workers[i] = {queue:[], process:null}
+
+  var update = function(worker) {
+    if (!worker.process) return
+
+    if (worker.queue.length) {
+      worker.process.ref()
+      worker.process.stdout.ref()
+      worker.process.stderr.ref()
+      worker.process.stdin.ref()
+    } else {
+      worker.process.unref()
+      worker.process.stdout.unref()
+      worker.process.stderr.unref()
+      worker.process.stdin.unref()
+    }
+  }
+
+  var select = function() {
+    var worker = workers.reduce(function(a, b) {
+      return a.queue.length <= b.queue.length ? a : b
+    })
+
+    if (worker.process) return worker
+
+    var child = worker.process = proc.spawn(path.join(__dirname, 'bin/convert'))
+
+    var onerror = once(function(err) {
+      child.kill()
+    })
+
+    child.on('exit', function(code) {
+      var err = new Error('graphicsmagick crashed with code: '+code)
+      if (stream) stream.destroy(err)
+      while (worker.queue.length) worker.queue.shift()(err)
+      worker.process = null
+    })
+
+    child.stdout.on('error', onerror)
+    child.stderr.on('error', onerror)
+    child.stdin.on('error', onerror)
+
+    var missing = 0
+    var stream
+
+    var draining = false
+    var drain = function() {
+      if (draining) return
+      draining = true
+
+      while (true) {
+        if (!missing) {
+          var buf = child.stdout.read(4)
+          if (!buf) break
+          missing = buf.readUInt32LE(0)
+          stream = worker.queue[0]
+          stream._read = drain
+        }
+
+        var block = child.stdout.read(Math.min(missing, child.stdout._readableState.length))
+        if (!block) break
+
+        missing -= block.length
+        var drained = stream.push(block)
+
+        if (!missing) {
+          worker.queue.shift()
+          stream.push(null)
+          stream._read = noop
+          if (worker.queue[0]) worker.queue[0].kick()
+          update(worker)
+        }
+
+        if (!drained) break
+      }
+
+      draining = false
+    }
+
+    child.stdout.on('readable', drain)
+
+    return worker
+  }
+
+  return function(opts) {
+    var worker = select()
+    var dup = new Duplex()
+    var buffer = [toStruct(opts)]
+    var destroyed = false
+    var wait
+
+    dup.on('finish', function() {
+      buffer = Buffer.concat(buffer)
+      worker.process.stdin.write(toUInt32LE(buffer.length))
+      worker.process.stdin.write(buffer)
+    })
+
+    dup._read = noop
+    dup._write = function(data, enc, cb) {
+      if (worker.queue[0] !== dup) {
+        wait = [data, cb]
+        return
+      }
+
+      buffer.push(data)
+      cb()
+    }
+
+    dup.kick = function() {
+      var w = wait
+      wait = null
+      if (w) dup._write(w[0], null, w[1])
+    }
+
+    dup.destroy = function(err) {
+      if (destroyed) return
+      destroyed = true
+      if (err) dup.emit('error', err)
+      dup.emit('close')
+    }
+
+    worker.queue.push(dup)
+    update(worker)
+
+    return dup
+  }
+}
+
+module.exports = function(defaults) {
+  if (!defaults) defaults = {}
+  var size = defaults.pool || 1
+  var convert = pool({size:size})
+
+  return function(opts) {
+    return convert(opts)
+  }
 }
