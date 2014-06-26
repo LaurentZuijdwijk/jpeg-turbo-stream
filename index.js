@@ -5,80 +5,60 @@ var path = require('path')
 
 var EMPTY = new Buffer(0)
 
-var headerStruct = function(type, opts, buffer) {
-  var header = new Buffer(16)
-  var length = buffer.length + opts.length + 12
-
-  header.writeUInt32LE(length, 0)
-  header.writeUInt32LE(type, 4)
-  header.writeUInt32LE(12, 8)
-  header.writeUInt32LE(opts.length+12, 12)
-
-  return header
-}
-
-var rotateStruct = function(degrees, auto) {
-  if (typeof degrees !== 'number' && auto !== false) auto = true
-  var buf = new Buffer(5)
-  buf.writeUInt32LE(degrees || 0, 0)
-  buf[4] = auto ? 1 : 0
-  return buf
-}
-
-var scaleStruct = function(wid, hei, ratio) {
-  var buf = new Buffer(9)
-  buf.writeUInt32LE(wid, 0)
-  buf.writeUInt32LE(hei, 4)
-  buf[8] = ratio ? 1 : 0
-  return buf
-}
-
 var toFormatType = function(format) {
+  if (!format) return 0
+
   switch (format.toLowerCase()) {
     case 'jpeg':
-    case 'jpg': return 0
-    case 'gif': return 1
-    case 'png': return 2
-    case 'bmp': return 3
+    case 'jpg': return 1
+    case 'gif': return 2
+    case 'png': return 3
+    case 'bmp': return 4
   }
   return 0
 }
 
-var convertStruct = function(format) {
+var toUInt32LE = function(len) {
   var buf = new Buffer(4)
-  buf.writeUInt32LE(toFormatType(format), 0)
+  buf.writeUInt32LE(len, 0)
+  return buf
+}
+
+var toStruct = function(opts) {
+  var buf = new Buffer(36)
+  var offset = -4
+
+  // scale
+  if (typeof opts.scale === 'number') opts.scale = {width:opts.scale, height:opts.scale}
+  var scale = opts.scale || {}
+  buf.writeUInt32LE(scale.ratio !== false ? 1 : 0, offset += 4)
+  buf.writeUInt32LE(scale.width || 0, offset += 4)
+  buf.writeUInt32LE(scale.height || 0, offset += 4)
+
+  // crop
+  if (typeof opts.crop === 'number') opts.crop = {width:opts.crop, height:opts.crop}
+  var crop = opts.crop || {}
+  buf.writeUInt32LE(crop.x || 0, offset += 4)
+  buf.writeUInt32LE(crop.y || 0, offset += 4)
+  buf.writeUInt32LE(crop.width || 0, offset += 4)
+  buf.writeUInt32LE(crop.height || 0, offset += 4)
+
+  // rotate
+  var degrees = opts.rotate === 'auto' || opts.rotate === true ? 360 : (opts.rotate || 0)
+  buf.writeUInt32LE(degrees < 0 ? 360 + degrees : degrees, offset += 4)
+
+  // output format
+  buf.writeUInt32LE(toFormatType(opts.format), offset += 4)
+
   return buf
 }
 
 var spawn = function() {
   var input = through.obj(function(data, enc, cb) {
     var buf = data.buffer
-    var opts
-    var type
+    var opts = toStruct(data)
 
-    switch (data.type) {
-      case 'scale':
-      opts = scaleStruct(data.width, data.height, data.ratio !== false)
-      type = 1
-      break
-
-      case 'rotate':
-      opts = rotateStruct(data.degrees, data.auto)
-      type = 2
-      break
-
-      case 'convert':
-      opts = convertStruct(data.format)
-      type = 3
-      break
-
-      default:
-      opts = EMPTY
-      type = 0
-      break
-    }
-
-    this.push(headerStruct(type, opts, buf))
+    this.push(toUInt32LE(buf.length+opts.length))
     this.push(opts)
     this.push(buf)
 
