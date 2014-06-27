@@ -26,7 +26,7 @@ typedef struct {
 
 int convert_format (convert_t *opts) {
   if (!opts->format || opts->format > 4) return MagickPass;
-  return MagickSetImageFormat(wand, formats[opts->format]);
+  return MagickSetImageFormat(wand, formats[opts->format-1]);
 }
 
 int convert_rotate (convert_t *opts) {
