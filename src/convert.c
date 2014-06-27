@@ -11,7 +11,7 @@
 
 static MagickWand *wand;
 static PixelWand *background = NULL;
-static char* formats[6] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
+static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
 
 typedef struct {
   uint32_t scale_ratio;
