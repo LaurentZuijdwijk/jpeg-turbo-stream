@@ -68,11 +68,18 @@ For more examples and usage see the test folder
 
 ## Dependencies
 
-You need to install libgraphicsmagicks in order to compile this
-On OSX using homebrew you can do
+You need to install libgraphicsmagicks in order to compile this.
+
+### Using OSX
 
 ```
 brew install graphicsmagick --build-from-source
+```
+
+### Using Ubuntu
+
+```
+sudo apt-get install libgraphicsmagick1-dev
 ```
 
 ## License
