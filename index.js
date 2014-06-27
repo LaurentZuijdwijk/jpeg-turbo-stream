@@ -114,7 +114,7 @@ var pool = function(opts) {
     child.on('exit', function(code) {
       var err = new Error('graphicsmagick crashed with code: '+code)
       if (stream) stream.destroy(err)
-      while (worker.queue.length) worker.queue.shift()(err)
+      while (worker.queue.length) worker.queue.shift().destroy(err)
       worker.process = null
     })
 
