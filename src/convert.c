@@ -14,7 +14,7 @@ static PixelWand *background = NULL;
 static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
 
 typedef struct {
-  uint32_t scale_ratio;
+  uint32_t scale_options;
   uint32_t scale_width;
   uint32_t scale_height;
   uint32_t crop_x;
@@ -86,16 +86,23 @@ int convert_scale (convert_t *opts) {
   unsigned long hei = MagickGetImageHeight(wand);
   double ratio = (double)wid / (double)hei;
 
-  if (!scale_width) scale_width = wid;
-  if (!scale_height) scale_height = hei;
-
   unsigned long new_wid = MIN(scale_width, wid);
   unsigned long new_hei = MIN(scale_height, hei);
 
-  if (opts->scale_ratio) {
-    if (ratio > 1) new_hei = (double)new_wid / ratio;
-    else new_wid = (double)new_hei * ratio;
+  if (opts->scale_options & 0x01 && new_hei && new_wid) {
+    double new_ratio = (double)new_wid / (double)new_hei;
+
+    if (opts->scale_options & 0x02) { // cover
+      if (new_ratio > ratio) new_hei = 0;
+      else new_wid = 0;
+    } else { // contain
+      if (new_ratio > ratio) new_wid = 0;
+      else new_hei = 0;
+    }
   }
+
+  if (!new_wid) new_wid = ratio * (double)new_hei;
+  if (!new_hei) new_hei = (double)new_wid / ratio;
 
   return MagickScaleImage(wand, new_wid, new_hei);
 }

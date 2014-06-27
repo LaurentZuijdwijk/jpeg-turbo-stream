@@ -43,7 +43,10 @@ var toStruct = function(opts) {
   // scale
   if (typeof opts.scale === 'number') opts.scale = {width:opts.scale, height:opts.scale}
   var scale = opts.scale || {}
-  buf.writeUInt32LE(scale.ratio !== false ? 1 : 0, offset += 4)
+  var scaleOpts = 0
+  if (scale.ratio !== false) scaleOpts |= 1
+  if (scale.type === 'cover') scaleOpts |= 2
+  buf.writeUInt32LE(scaleOpts, offset += 4)
   buf.writeUInt32LE(scale.width || 0, offset += 4)
   buf.writeUInt32LE(scale.height || 0, offset += 4)
 
