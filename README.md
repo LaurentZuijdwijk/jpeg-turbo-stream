@@ -52,6 +52,16 @@ var stream = convert({
 })
 ```
 
+You can also use it to get metadata info about an image using `convert.info`
+
+``` js
+var info = convert.info(function(err, info) {
+  console.log(info) // prints something like {width:500, height:400, format:'png'}
+})
+
+fs.createReadStream('input.jpg').pipe(info)
+```
+
 ## Dependencies
 
 You need to install libgraphicsmagicks in order to compile this
