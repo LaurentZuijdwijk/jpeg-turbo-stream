@@ -6,6 +6,8 @@ Fast convertion/scaling of images using a pool of long lived graphicsmagick proc
 npm install graphicsmagick-stream
 ```
 
+[![Build Status](https://travis-ci.org/e-conomic/graphicsmagick-stream.png)](https://travis-ci.org/e-conomic/graphicsmagick-stream)
+
 It works by spawning and reusing a custom graphicsmagick processes (see src/) that
 accepts images over stdin and pipes out the converted result over stdout
 
