@@ -62,6 +62,8 @@ var info = convert.info(function(err, info) {
 fs.createReadStream('input.jpg').pipe(info)
 ```
 
+For more examples and usage see the test folder
+
 ## Dependencies
 
 You need to install libgraphicsmagicks in order to compile this
