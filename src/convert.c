@@ -106,7 +106,9 @@ void to_convert_info (convert_info_t *res) {
   res->format = 0;
 
   char *fmt = MagickGetImageFormat(wand);
-  for (int i = 0; i < 6; i++) {
+  int i;
+
+  for (i = 0; i < 6; i++) {
     if (strcmp(fmt, formats[i])) continue;
     res->format = i;
     break;
