@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <wand/magick_wand.h>
+#include <string.h>
 #include "io.h"
 #include "debug.h"
 
@@ -10,7 +11,7 @@
 
 static MagickWand *wand;
 static PixelWand *background = NULL;
-static char* formats[4] = {"JPG", "GIF", "PNG", "BMP"};
+static char* formats[6] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
 
 typedef struct {
   uint32_t scale_ratio;
@@ -24,9 +25,15 @@ typedef struct {
   uint32_t format;
 } convert_t;
 
+typedef struct {
+  uint32_t width;
+  uint32_t height;
+  uint32_t format;
+} convert_info_t;
+
 int convert_format (convert_t *opts) {
-  if (!opts->format || opts->format > 4) return MagickPass;
-  return MagickSetImageFormat(wand, formats[opts->format-1]);
+  if (opts->format < 2 || opts->format > 5) return MagickPass;
+  return MagickSetImageFormat(wand, formats[opts->format]);
 }
 
 int convert_rotate (convert_t *opts) {
@@ -91,8 +98,22 @@ int convert_scale (convert_t *opts) {
   return MagickScaleImage(wand, new_wid, new_hei);
 }
 
+void to_convert_info (convert_info_t *res) {
+  res->width = MagickGetImageWidth(wand);
+  res->height = MagickGetImageHeight(wand);
+  res->format = 0;
+
+  char *fmt = MagickGetImageFormat(wand);
+  for (int i = 0; i < 6; i++) {
+    if (strcmp(fmt, formats[i])) continue;
+    res->format = i;
+    break;
+  }
+}
+
 int parse (size_t size, unsigned char *data) {
   convert_t *opts = (convert_t*) data;
+  convert_info_t info_data;
 
   size -= sizeof(convert_t);
   data += sizeof(convert_t);
@@ -104,7 +125,14 @@ int parse (size_t size, unsigned char *data) {
   if (convert_rotate(opts) != MagickPass) return -5;
   if (convert_crop(opts) != MagickPass)   return -6;
 
-  data = MagickWriteImageBlob(wand, &size);
+  if (opts->format == 1) {
+    to_convert_info(&info_data);
+    data = (unsigned char*) &info_data;
+    size = sizeof(convert_info_t);
+  } else {
+    data = MagickWriteImageBlob(wand, &size);
+  }
+
   return io_write(size, data);
 }
 

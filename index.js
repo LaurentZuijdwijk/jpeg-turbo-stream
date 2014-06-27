@@ -6,18 +6,28 @@ var path = require('path')
 
 var noop = function() {}
 var EMPTY = new Buffer(0)
+var FORMATS = ['noop', 'info', 'jpeg', 'gif', 'png', 'bmp']
 
 var toFormatType = function(format) {
   if (!format) return 0
 
   switch (format.toLowerCase()) {
+    case 'info': return 1
     case 'jpeg':
-    case 'jpg': return 1
-    case 'gif': return 2
-    case 'png': return 3
-    case 'bmp': return 4
+    case 'jpg':  return 2
+    case 'gif':  return 3
+    case 'png':  return 4
+    case 'bmp':  return 5
   }
   return 0
+}
+
+var fromInfoStruct = function(data) {
+  var result = {}
+  result.width = data.readUInt32LE(0)
+  result.height = data.readUInt32LE(4)
+  result.format = FORMATS[data.readUInt32LE(8)]
+  return result
 }
 
 var toUInt32LE = function(len) {
@@ -200,10 +210,31 @@ var pool = function(opts) {
 
 module.exports = function(defaults) {
   if (!defaults) defaults = {}
-  var size = defaults.pool || 1
-  var convert = pool({size:size})
 
-  return function(opts) {
-    return convert(xtend(defaults, opts))
+  var size = defaults.pool || 1
+  var exec = pool({size:size})
+
+  var convert = function(opts) {
+    return exec(xtend(defaults, opts))
   }
+
+  convert.info = function(opts, cb) {
+    if (typeof opts === 'function') return convert.info(null, opts)
+    if (!opts) opts = {}
+
+    opts.format = 'info'
+    cb = once(cb)
+    var buf = []
+
+    return convert(opts)
+      .on('error', cb)
+      .on('data', function(data) {
+        buf.push(data)
+      })
+      .on('end', function() {
+        cb(null, fromInfoStruct(Buffer.concat(buf)))
+      })
+  }
+
+  return convert
 }
