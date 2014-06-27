@@ -18,21 +18,22 @@ var gm = require('graphicsmagick-stream')
 var fs = require('fs')
 
 var convert = gm({
-  pool: 5,        // how many graphicsmagick processes to use
-  format: 'png',  // format to convert to
+  pool: 5,             // how many graphicsmagick processes to use
+  format: 'png',       // format to convert to
   scale: {
-    width: 200,   // scale input to this width
-    height: 200,  // scale input this height
-    ratio: true   // keep the aspect ratio (defaults to true)
+    width: 200,        // scale input to this width
+    height: 200,       // scale input this height
+    ratio: true,       // keep the aspect ratio (defaults to true)
+    type: 'constrain'  // scale type (either constrain/cover)
   },
   crop: {
-    width: 200,   // crop input to this width
-    height: 200,  // crop input this height
-    x: 0,         // crop using this x offset
-    y: 0          // crop using this y offset
+    width: 200,        // crop input to this width
+    height: 200,       // crop input this height
+    x: 0,              // crop using this x offset
+    y: 0               // crop using this y offset
   },
-  rotate: 'auto'  // auto rotate image based on exif data
-                  // or use rotate:degrees
+  rotate: 'auto'       // auto rotate image based on exif data
+                       // or use rotate:degrees
 })
 
 
