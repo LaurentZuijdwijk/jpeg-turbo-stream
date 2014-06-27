@@ -92,8 +92,10 @@ int convert_scale (convert_t *opts) {
   unsigned long new_wid = MIN(scale_width, wid);
   unsigned long new_hei = MIN(scale_height, hei);
 
-  if (ratio > 1) new_hei = (double)new_wid / ratio;
-  else new_wid = (double)new_hei * ratio;
+  if (opts->scale_ratio) {
+    if (ratio > 1) new_hei = (double)new_wid / ratio;
+    else new_wid = (double)new_hei * ratio;
+  }
 
   return MagickScaleImage(wand, new_wid, new_hei);
 }
