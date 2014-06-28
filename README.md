@@ -24,7 +24,7 @@ var convert = gm({
     width: 200,        // scale input to this width
     height: 200,       // scale input this height
     ratio: true,       // keep the aspect ratio (defaults to true)
-    type: 'constrain'  // scale type (either constrain/cover)
+    type: 'contain'    // scale type (either contain/cover)
   },
   crop: {
     width: 200,        // crop input to this width
