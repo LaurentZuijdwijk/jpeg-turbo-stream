@@ -212,6 +212,7 @@ var pool = function(opts) {
 }
 
 module.exports = function(defaults) {
+  if (typeof defaults === 'number') defaults = {pool:defaults}
   if (!defaults) defaults = {}
 
   var size = defaults.pool || 1
