@@ -11,6 +11,7 @@
 
 static PixelWand *default_background = NULL;
 static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
+enum {NOOP=0, INFO=1, JPEG=2, GIF=3, PNG=4, BMP=5};
 
 typedef struct {
   uint32_t scale_options;
@@ -32,7 +33,7 @@ typedef struct {
 } convert_info_t;
 
 int convert_format (MagickWand *wand, convert_t *opts) {
-  if (opts->format < 2 || opts->format > 5) return MagickPass;
+  if (opts->format < JPEG || opts->format > BMP) return MagickPass;
   return MagickSetImageFormat(wand, formats[opts->format]);
 }
 
@@ -46,10 +47,9 @@ int convert_rotate (MagickWand *wand, convert_t *opts) {
   if (opts->rotate_degrees == 360) opts->rotate_degrees = 0;
 
   char* exif_orientation = MagickGetImageAttribute(wand,  "EXIF:Orientation");
-  if (exif_orientation != NULL) {
-    int orientation = atoi(exif_orientation);
 
-    switch (orientation) {
+  if (exif_orientation != NULL) {
+    switch (atoi(exif_orientation)) {
       case 3:
       opts->rotate_degrees += 180;
       break;
@@ -115,12 +115,12 @@ int convert_scale (MagickWand *wand, convert_t *opts) {
 void to_convert_info (MagickWand *wand, convert_info_t *res) {
   res->width = MagickGetImageWidth(wand);
   res->height = MagickGetImageHeight(wand);
-  res->format = 0;
+  res->format = NOOP;
 
   char *fmt = MagickGetImageFormat(wand);
   int i;
 
-  for (i = 0; i < 6; i++) {
+  for (i = JPEG; i <= BMP; i++) {
     if (strcmp(fmt, formats[i])) continue;
     res->format = i;
     break;
@@ -156,7 +156,7 @@ int parse (size_t size, unsigned char *data) {
     return status;
   }
 
-  if (opts->format == 1) {
+  if (opts->format == INFO) {
     to_convert_info(wand, &info_data);
     data = (unsigned char*) &info_data;
     size = sizeof(convert_info_t);
