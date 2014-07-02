@@ -32,8 +32,9 @@ var convert = gm({
     x: 0,              // crop using this x offset
     y: 0               // crop using this y offset
   },
-  rotate: 'auto'       // auto rotate image based on exif data
+  rotate: 'auto',      // auto rotate image based on exif data
                        // or use rotate:degrees
+  density: 300         // set the image density. useful when converting pdf to images
 })
 
 
@@ -66,6 +67,11 @@ fs.createReadStream('input.jpg').pipe(info)
 ```
 
 For more examples and usage see the test folder
+
+## PDF Conversion
+
+If you install ghostscript as well you'll be able to convert pdfs to images
+by simply piping in a pdf and setting output format to `jpeg` (or another image format)
 
 ## Dependencies
 
