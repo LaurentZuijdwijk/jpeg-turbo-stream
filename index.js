@@ -37,7 +37,7 @@ var toUInt32LE = function(len) {
 }
 
 var toStruct = function(opts) {
-  var buf = new Buffer(36)
+  var buf = new Buffer(40)
   var offset = -4
 
   // scale
@@ -61,6 +61,9 @@ var toStruct = function(opts) {
   // rotate
   var degrees = opts.rotate === 'auto' || opts.rotate === true ? 360 : (opts.rotate || 0)
   buf.writeUInt32LE(degrees < 0 ? 360 + degrees : degrees, offset += 4)
+
+  // density
+  buf.writeUInt32LE(opts.density || 0, offset += 4)
 
   // output format
   buf.writeUInt32LE(toFormatType(opts.format), offset += 4)

@@ -21,6 +21,7 @@ typedef struct {
   uint32_t crop_width;
   uint32_t crop_height;
   uint32_t rotate_degrees;
+  uint32_t density;
   uint32_t format;
 } convert_t;
 
@@ -33,6 +34,11 @@ typedef struct {
 int convert_format (MagickWand *wand, convert_t *opts) {
   if (opts->format < 2 || opts->format > 5) return MagickPass;
   return MagickSetImageFormat(wand, formats[opts->format]);
+}
+
+int convert_density (MagickWand *wand, convert_t* opts) {
+  if (!opts->density) return MagickPass;
+  return MagickSetResolution(wand, opts->density, opts->density);
 }
 
 int convert_rotate (MagickWand *wand, convert_t *opts) {
@@ -122,6 +128,8 @@ void to_convert_info (MagickWand *wand, convert_info_t *res) {
 }
 
 int convert (MagickWand *wand, convert_t *opts, unsigned char* data, size_t size) {
+  if (convert_density(wand, opts) != MagickPass) return -7;
+
   if (MagickReadImageBlob(wand, data, size) != MagickPass) return -2;
 
   if (convert_format(wand, opts) != MagickPass) return -3;
