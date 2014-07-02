@@ -6,7 +6,7 @@ var path = require('path')
 
 var noop = function() {}
 var EMPTY = new Buffer(0)
-var FORMATS = ['noop', 'info', 'jpeg', 'gif', 'png', 'bmp']
+var FORMATS = ['noop', 'info', 'jpeg', 'gif', 'png', 'bmp', 'pdf']
 
 var toFormatType = function(format) {
   if (!format) return 0
@@ -18,6 +18,7 @@ var toFormatType = function(format) {
     case 'gif':  return 3
     case 'png':  return 4
     case 'bmp':  return 5
+    case 'pdf':  return 6
   }
   return 0
 }

@@ -10,8 +10,8 @@
 #define MIN(x,y) (x < y ? x : y)
 
 static PixelWand *default_background = NULL;
-static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
-enum {NOOP=0, INFO=1, JPEG=2, GIF=3, PNG=4, BMP=5};
+static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP", "PDF"};
+enum {NOOP=0, INFO=1, JPEG=2, GIF=3, PNG=4, BMP=5, PDF=6};
 
 typedef struct {
   uint32_t scale_options;
@@ -120,7 +120,7 @@ void to_convert_info (MagickWand *wand, convert_info_t *res) {
   char *fmt = MagickGetImageFormat(wand);
   int i;
 
-  for (i = JPEG; i <= BMP; i++) {
+  for (i = JPEG; i <= PDF; i++) {
     if (strcmp(fmt, formats[i])) continue;
     res->format = i;
     break;
