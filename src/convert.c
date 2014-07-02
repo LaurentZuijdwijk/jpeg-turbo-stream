@@ -9,8 +9,7 @@
 
 #define MIN(x,y) (x < y ? x : y)
 
-static MagickWand *wand;
-static PixelWand *background = NULL;
+static PixelWand *default_background = NULL;
 static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP"};
 
 typedef struct {
@@ -31,12 +30,12 @@ typedef struct {
   uint32_t format;
 } convert_info_t;
 
-int convert_format (convert_t *opts) {
+int convert_format (MagickWand *wand, convert_t *opts) {
   if (opts->format < 2 || opts->format > 5) return MagickPass;
   return MagickSetImageFormat(wand, formats[opts->format]);
 }
 
-int convert_rotate (convert_t *opts) {
+int convert_rotate (MagickWand *wand, convert_t *opts) {
   if (!opts->rotate_degrees) return MagickPass;
   if (opts->rotate_degrees == 360) opts->rotate_degrees = 0;
 
@@ -62,10 +61,10 @@ int convert_rotate (convert_t *opts) {
     MagickProfileImage(wand, "exif", NULL, 0);
   }
 
-  return opts->rotate_degrees ? MagickRotateImage(wand, background, opts->rotate_degrees) : MagickPass;
+  return opts->rotate_degrees ? MagickRotateImage(wand, default_background, opts->rotate_degrees) : MagickPass;
 }
 
-int convert_crop (convert_t *opts) {
+int convert_crop (MagickWand *wand, convert_t *opts) {
   unsigned long crop_width = opts->crop_width;
   unsigned long crop_height = opts->crop_height;
 
@@ -76,7 +75,7 @@ int convert_crop (convert_t *opts) {
   return MagickCropImage(wand, crop_width, crop_height, opts->crop_x, opts->crop_y);
 }
 
-int convert_scale (convert_t *opts) {
+int convert_scale (MagickWand *wand, convert_t *opts) {
   unsigned long scale_width = opts->scale_width;
   unsigned long scale_height = opts->scale_height;
 
@@ -107,7 +106,7 @@ int convert_scale (convert_t *opts) {
   return MagickScaleImage(wand, new_wid, new_hei);
 }
 
-void to_convert_info (convert_info_t *res) {
+void to_convert_info (MagickWand *wand, convert_info_t *res) {
   res->width = MagickGetImageWidth(wand);
   res->height = MagickGetImageHeight(wand);
   res->format = 0;
@@ -122,34 +121,47 @@ void to_convert_info (convert_info_t *res) {
   }
 }
 
+int convert (MagickWand *wand, convert_t *opts, unsigned char* data, size_t size) {
+  if (MagickReadImageBlob(wand, data, size) != MagickPass) return -2;
+
+  if (convert_format(wand, opts) != MagickPass) return -3;
+  if (convert_scale(wand, opts) != MagickPass)  return -4;
+  if (convert_rotate(wand, opts) != MagickPass) return -5;
+  if (convert_crop(wand, opts) != MagickPass)   return -6;
+
+  return 0;
+}
+
 int parse (size_t size, unsigned char *data) {
+  MagickWand *wand = NewMagickWand();
+
   convert_t *opts = (convert_t*) data;
   convert_info_t info_data;
 
   size -= sizeof(convert_t);
   data += sizeof(convert_t);
 
-  if (MagickReadImageBlob(wand, data, size) != MagickPass) return -2;
+  int status = convert(wand, opts, data, size);
 
-  if (convert_format(opts) != MagickPass) return -3;
-  if (convert_scale(opts) != MagickPass)  return -4;
-  if (convert_rotate(opts) != MagickPass) return -5;
-  if (convert_crop(opts) != MagickPass)   return -6;
+  if (status < 0) {
+    DestroyMagickWand(wand);
+    return status;
+  }
 
   if (opts->format == 1) {
-    to_convert_info(&info_data);
+    to_convert_info(wand, &info_data);
     data = (unsigned char*) &info_data;
     size = sizeof(convert_info_t);
   } else {
     data = MagickWriteImageBlob(wand, &size);
   }
 
+  DestroyMagickWand(wand);
   return io_write(size, data);
 }
 
 int main (int argc, char *argv[]) {
   InitializeMagick(*argv);
-  background = NewPixelWand();
-  wand = NewMagickWand();
+  default_background = NewPixelWand();
   return io_read(parse);
 }
