@@ -147,7 +147,7 @@ int convert_adjoin (MagickWand *input, MagickWand **output, convert_t *opts) {
   *output = MagickAppendImages(input, 1);
   if (*output == NULL) return MagickFail;
 
-  if (opts->scale_height) opts->scale_height *= pages;
+  if (opts->scale_height && !(opts->scale_options & 0x04)) opts->scale_height *= pages;
 
   return MagickPass;
 }
