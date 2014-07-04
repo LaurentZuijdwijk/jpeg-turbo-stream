@@ -23,6 +23,8 @@ typedef struct {
   uint32_t crop_height;
   uint32_t rotate_degrees;
   uint32_t density;
+  uint32_t page_start;
+  uint32_t page_end;
   uint32_t format;
 } convert_t;
 
@@ -30,23 +32,24 @@ typedef struct {
   uint32_t width;
   uint32_t height;
   uint32_t format;
+  uint32_t pages;
 } convert_info_t;
 
-int convert_format (MagickWand *wand, convert_t *opts) {
+int convert_format (MagickWand *input, convert_t *opts) {
   if (opts->format < JPEG || opts->format > BMP) return MagickPass;
-  return MagickSetImageFormat(wand, formats[opts->format]);
+  return MagickSetImageFormat(input, formats[opts->format]);
 }
 
-int convert_density (MagickWand *wand, convert_t* opts) {
+int convert_density (MagickWand *input, convert_t* opts) {
   if (!opts->density) return MagickPass;
-  return MagickSetResolution(wand, opts->density, opts->density);
+  return MagickSetResolution(input, opts->density, opts->density);
 }
 
-int convert_rotate (MagickWand *wand, convert_t *opts) {
+int convert_rotate (MagickWand *input, convert_t *opts) {
   if (!opts->rotate_degrees) return MagickPass;
   if (opts->rotate_degrees == 360) opts->rotate_degrees = 0;
 
-  char* exif_orientation = MagickGetImageAttribute(wand,  "EXIF:Orientation");
+  char* exif_orientation = MagickGetImageAttribute(input,  "EXIF:Orientation");
 
   if (exif_orientation != NULL) {
     switch (atoi(exif_orientation)) {
@@ -64,31 +67,31 @@ int convert_rotate (MagickWand *wand, convert_t *opts) {
     }
 
     // just clear all exif data
-    MagickProfileImage(wand, "exif", NULL, 0);
+    MagickProfileImage(input, "exif", NULL, 0);
   }
 
-  return opts->rotate_degrees ? MagickRotateImage(wand, default_background, opts->rotate_degrees) : MagickPass;
+  return opts->rotate_degrees ? MagickRotateImage(input, default_background, opts->rotate_degrees) : MagickPass;
 }
 
-int convert_crop (MagickWand *wand, convert_t *opts) {
+int convert_crop (MagickWand *input, convert_t *opts) {
   unsigned long crop_width = opts->crop_width;
   unsigned long crop_height = opts->crop_height;
 
   if (!crop_width && !opts->crop_x && !crop_height && !opts->crop_y) return MagickPass;
-  if (!crop_width) crop_width = MagickGetImageWidth(wand);
-  if (!crop_height) crop_height = MagickGetImageHeight(wand);
+  if (!crop_width) crop_width = MagickGetImageWidth(input);
+  if (!crop_height) crop_height = MagickGetImageHeight(input);
 
-  return MagickCropImage(wand, crop_width, crop_height, opts->crop_x, opts->crop_y);
+  return MagickCropImage(input, crop_width, crop_height, opts->crop_x, opts->crop_y);
 }
 
-int convert_scale (MagickWand *wand, convert_t *opts) {
+int convert_scale (MagickWand *input, convert_t *opts) {
   unsigned long scale_width = opts->scale_width;
   unsigned long scale_height = opts->scale_height;
 
   if (!scale_height && !scale_width) return MagickPass;
 
-  unsigned long wid = MagickGetImageWidth(wand);
-  unsigned long hei = MagickGetImageHeight(wand);
+  unsigned long wid = MagickGetImageWidth(input);
+  unsigned long hei = MagickGetImageHeight(input);
   double ratio = (double)wid / (double)hei;
 
   unsigned long new_wid = MIN(scale_width, wid);
@@ -109,15 +112,54 @@ int convert_scale (MagickWand *wand, convert_t *opts) {
   if (!new_wid) new_wid = ratio * (double)new_hei;
   if (!new_hei) new_hei = (double)new_wid / ratio;
 
-  return MagickScaleImage(wand, new_wid, new_hei);
+  return MagickScaleImage(input, new_wid, new_hei);
 }
 
-void to_convert_info (MagickWand *wand, convert_info_t *res) {
-  res->width = MagickGetImageWidth(wand);
-  res->height = MagickGetImageHeight(wand);
+int convert_remove_range(MagickWand *input, uint32_t start, uint32_t end) {
+  MagickSetImageIndex(input, start);
+  while (start++ < end) {
+    if (MagickRemoveImage(input) != MagickPass) return MagickFail;
+  }
+  return MagickPass;
+}
+
+int convert_adjoin (MagickWand *input, MagickWand **output, convert_t *opts) {
+  unsigned long pages = MagickGetNumberImages(input);
+  uint32_t start = opts->page_start;
+  uint32_t end = opts->page_end;
+
+  if (pages < 2 || opts->format == INFO) return MagickPass;
+
+  if (end && end < pages) {
+    if (convert_remove_range(input, end, pages) != MagickPass) return MagickFail;
+    pages = end;
+  }
+
+  if (start && pages) {
+    start = MIN(start-1, pages);
+    if (convert_remove_range(input, 0, start) != MagickPass) return MagickFail;
+    pages -= start;
+  }
+
+  if (!pages) return MagickFail;
+
+  MagickResetIterator(input);
+  *output = MagickAppendImages(input, 1);
+  if (*output == NULL) return MagickFail;
+
+  if (opts->scale_height) opts->scale_height *= pages;
+
+  return MagickPass;
+}
+
+void to_convert_info (MagickWand *input, convert_info_t *res) {
+  res->width = MagickGetImageWidth(input);
+  res->height = MagickGetImageHeight(input);
   res->format = NOOP;
 
-  char *fmt = MagickGetImageFormat(wand);
+  res->pages = MagickGetNumberImages(input);
+
+  char *fmt = MagickGetImageFormat(input);
   int i;
 
   for (i = JPEG; i <= PDF; i++) {
@@ -127,21 +169,29 @@ void to_convert_info (MagickWand *wand, convert_info_t *res) {
   }
 }
 
-int convert (MagickWand *wand, convert_t *opts, unsigned char* data, size_t size) {
-  if (convert_density(wand, opts) != MagickPass) return -7;
+int convert (MagickWand *input, MagickWand **output, convert_t *opts, unsigned char* data, size_t size) {
+  if (convert_density(input, opts) != MagickPass) return -7;
+  if (MagickReadImageBlob(input, data, size) != MagickPass) return -2;
+  if (convert_adjoin(input, output, opts) != MagickPass) return -8;
 
-  if (MagickReadImageBlob(wand, data, size) != MagickPass) return -2;
+  input = *output;
 
-  if (convert_format(wand, opts) != MagickPass) return -3;
-  if (convert_scale(wand, opts) != MagickPass)  return -4;
-  if (convert_rotate(wand, opts) != MagickPass) return -5;
-  if (convert_crop(wand, opts) != MagickPass)   return -6;
+  if (convert_format(input, opts) != MagickPass) return -3;
+  if (convert_scale(input, opts) != MagickPass)  return -4;
+  if (convert_rotate(input, opts) != MagickPass) return -5;
+  if (convert_crop(input, opts) != MagickPass)   return -6;
 
   return 0;
 }
 
+void destroy (MagickWand *input, MagickWand *output) {
+  if (input != NULL) DestroyMagickWand(input);
+  if (output != NULL && input != output) DestroyMagickWand(output);
+}
+
 int parse (size_t size, unsigned char *data) {
-  MagickWand *wand = NewMagickWand();
+  MagickWand *input = NewMagickWand();
+  MagickWand *output = input;
 
   convert_t *opts = (convert_t*) data;
   convert_info_t info_data;
@@ -149,23 +199,24 @@ int parse (size_t size, unsigned char *data) {
   size -= sizeof(convert_t);
   data += sizeof(convert_t);
 
-  int status = convert(wand, opts, data, size);
+  int status = convert(input, &output, opts, data, size);
 
   if (status < 0) {
-    DestroyMagickWand(wand);
+    destroy(input, output);
     return status;
   }
 
   if (opts->format == INFO) {
-    to_convert_info(wand, &info_data);
+    to_convert_info(output, &info_data);
     data = (unsigned char*) &info_data;
     size = sizeof(convert_info_t);
   } else {
-    data = MagickWriteImageBlob(wand, &size);
+    data = MagickWriteImageBlob(output, &size);
   }
 
-  DestroyMagickWand(wand);
-  return io_write(size, data);
+  status = io_write(size, data);
+  destroy(input, output);
+  return status;
 }
 
 int main (int argc, char *argv[]) {

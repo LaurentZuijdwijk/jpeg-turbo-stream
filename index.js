@@ -8,6 +8,8 @@ var noop = function() {}
 var EMPTY = new Buffer(0)
 var FORMATS = ['noop', 'info', 'jpeg', 'gif', 'png', 'bmp', 'pdf']
 
+var DEBUGGING = process.env.DEBUG && /graphicsmagick-stream|\*/.test(process.env.DEBUG)
+
 var toFormatType = function(format) {
   if (!format) return 0
 
@@ -28,6 +30,7 @@ var fromInfoStruct = function(data) {
   result.width = data.readUInt32LE(0)
   result.height = data.readUInt32LE(4)
   result.format = FORMATS[data.readUInt32LE(8)]
+  result.pages = data.readUInt32LE(12)
   return result
 }
 
@@ -38,7 +41,7 @@ var toUInt32LE = function(len) {
 }
 
 var toStruct = function(opts) {
-  var buf = new Buffer(40)
+  var buf = new Buffer(48)
   var offset = -4
 
   // scale
@@ -65,6 +68,11 @@ var toStruct = function(opts) {
 
   // density
   buf.writeUInt32LE(opts.density || 0, offset += 4)
+
+  // pages
+  var page = typeof opts.page === 'number' ? [opts.page, opts.page] : opts.page || [0,0]
+  buf.writeUInt32LE(page[0] || 0, offset += 4)
+  buf.writeUInt32LE(page[1] || 0, offset += 4)
 
   // output format
   buf.writeUInt32LE(toFormatType(opts.format), offset += 4)
@@ -128,6 +136,7 @@ var pool = function(opts) {
     child.stdout.on('error', onerror)
     child.stderr.on('error', onerror)
     child.stdin.on('error', onerror)
+    if (DEBUGGING) child.stderr.pipe(process.stderr)
 
     var missing = 0
     var stream
