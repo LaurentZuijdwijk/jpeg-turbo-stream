@@ -32,6 +32,9 @@ var convert = gm({
     x: 0,              // crop using this x offset
     y: 0               // crop using this y offset
   },
+  page: [1,5],         // only render page 1 to 5 (for pdfs)
+                       // set to a single number if you only want to render one page
+                       // or omit if you want all pages
   rotate: 'auto',      // auto rotate image based on exif data
                        // or use rotate:degrees
   density: 300         // set the image density. useful when converting pdf to images
@@ -72,6 +75,9 @@ For more examples and usage see the test folder
 
 If you install ghostscript as well you'll be able to convert pdfs to images
 by simply piping in a pdf and setting output format to `jpeg` (or another image format)
+
+If you are rendering a multipage pdf `scale.height` will set the height of each page.
+To force `scale.height` to donate the height of the entire image set `scale.multipage = true`
 
 ## Dependencies
 
