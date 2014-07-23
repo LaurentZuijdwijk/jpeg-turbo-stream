@@ -104,15 +104,18 @@ int convert_scale (MagickWand *input, convert_t *opts) {
   } else {
     new_wid = MIN(scale_width, wid);
     new_hei = MIN(scale_height, hei);
-    double new_ratio = (double)new_wid / (double)new_hei;
 
-    if (opts->scale_options & COVER) {
-      if (new_ratio > ratio) new_hei = 0;
-      else new_wid = 0;
-    }
-    if (opts->scale_options & CONTAIN) {
-      if (new_ratio > ratio) new_wid = 0;
-      else new_hei = 0;
+    if (new_hei && new_wid) {
+      double new_ratio = (double)new_wid / (double)new_hei;
+
+      if (opts->scale_options & COVER) {
+        if (new_ratio > ratio) new_hei = 0;
+        else new_wid = 0;
+      }
+      if (opts->scale_options & CONTAIN) {
+        if (new_ratio > ratio) new_wid = 0;
+        else new_hei = 0;
+      }
     }
   }
 
