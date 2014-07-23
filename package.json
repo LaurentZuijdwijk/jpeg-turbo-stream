@@ -1,6 +1,6 @@
 {
   "name": "graphicsmagick-stream",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "Fast convertion/scaling of images using a pool of long lived graphicsmagick processes",
   "main": "index.js",
   "dependencies": {
