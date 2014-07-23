@@ -48,9 +48,10 @@ var toStruct = function(opts) {
   if (typeof opts.scale === 'number') opts.scale = {width:opts.scale, height:opts.scale}
   var scale = opts.scale || {}
   var scaleOpts = 0
-  if (scale.ratio !== false) scaleOpts |= 1
-  if (scale.type === 'cover') scaleOpts |= 2
-  if (scale.multipage) scaleOpts |= 4
+  if (scale.type === 'fixed') scaleOpts |= 2
+  else if (scale.type === 'cover') scaleOpts |= 4
+  else scaleOpts |= 1
+  if (scale.multipage) scaleOpts |= 8
   buf.writeUInt32LE(scaleOpts, offset += 4)
   buf.writeUInt32LE(scale.width || 0, offset += 4)
   buf.writeUInt32LE(scale.height || 0, offset += 4)

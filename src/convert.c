@@ -12,6 +12,7 @@
 static PixelWand *default_background = NULL;
 static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP", "PDF"};
 enum {NOOP=0, INFO=1, JPEG=2, GIF=3, PNG=4, BMP=5, PDF=6};
+enum {CONTAIN=0x01, FIXED=0x02, COVER=0x04, MULTIPAGE=0x08};
 
 typedef struct {
   uint32_t scale_options;
@@ -94,16 +95,22 @@ int convert_scale (MagickWand *input, convert_t *opts) {
   unsigned long hei = MagickGetImageHeight(input);
   double ratio = (double)wid / (double)hei;
 
-  unsigned long new_wid = MIN(scale_width, wid);
-  unsigned long new_hei = MIN(scale_height, hei);
+  unsigned long new_wid = 0;
+  unsigned long new_hei = 0;
 
-  if (opts->scale_options & 0x01 && new_hei && new_wid) {
+  if (opts->scale_options & FIXED) {
+    new_wid = scale_width;
+    new_hei = scale_height;
+  } else {
+    new_wid = MIN(scale_width, wid);
+    new_hei = MIN(scale_height, hei);
     double new_ratio = (double)new_wid / (double)new_hei;
 
-    if (opts->scale_options & 0x02) { // cover
+    if (opts->scale_options & COVER) {
       if (new_ratio > ratio) new_hei = 0;
       else new_wid = 0;
-    } else { // contain
+    }
+    if (opts->scale_options & CONTAIN) {
       if (new_ratio > ratio) new_wid = 0;
       else new_hei = 0;
     }
@@ -147,7 +154,7 @@ int convert_adjoin (MagickWand *input, MagickWand **output, convert_t *opts) {
   *output = MagickAppendImages(input, 1);
   if (*output == NULL) return MagickFail;
 
-  if (opts->scale_height && !(opts->scale_options & 0x04)) opts->scale_height *= pages;
+  if (opts->scale_height && !(opts->scale_options & MULTIPAGE)) opts->scale_height *= pages;
 
   return MagickPass;
 }

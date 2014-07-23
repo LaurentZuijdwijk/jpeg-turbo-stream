@@ -23,8 +23,7 @@ var convert = gm({
   scale: {
     width: 200,        // scale input to this width
     height: 200,       // scale input this height
-    ratio: true,       // keep the aspect ratio (defaults to true)
-    type: 'contain'    // scale type (either contain/cover)
+    type: 'contain'    // scale type (either contain/cover/fixed)
   },
   crop: {
     width: 200,        // crop input to this width
@@ -70,6 +69,13 @@ fs.createReadStream('input.jpg').pipe(info)
 ```
 
 For more examples and usage see the test folder
+
+
+## Scale types
+
+* `contain` sets the scaled image to maximum have a width/height of the scale box. Always respects ratio.
+* `cover` sets the scaled image to at least have one of the width/height within the scale box. Always respects ratio.
+* `fixed` sets the scaled image to precisely the given width/height of the scale box. If both width/height is given it does not respect the ratio.
 
 ## PDF Conversion
 

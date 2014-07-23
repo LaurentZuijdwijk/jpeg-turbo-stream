@@ -17,7 +17,7 @@ tape('scale', function(t) {
     }))
 
   fixtures.png()
-    .pipe(convert({scale:{width:300, height:300, ratio:false}}))
+    .pipe(convert({scale:{width:300, height:300, type:'fixed'}}))
     .pipe(convert.info(function(err, data) {
       t.ok(!err)
       t.same(data.width, 300)
