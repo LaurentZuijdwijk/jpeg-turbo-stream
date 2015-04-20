@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
 #include "io.h"
 
 static int read_stdin (io_buffer_t *b, int len) {
@@ -60,5 +61,37 @@ int io_write (size_t size, unsigned char *buf) {
   r = write(1, buf, size);
   if (r < 0) return r;
 
-  return size + r;
+  return r + sizeof(uint32_t);
+}
+
+int io_write_file_to_stdout(char* filename) {
+  int r;
+  size_t fileLen;
+  const int buflen = 1024;
+  int dataread = 0;
+  FILE* file = fopen(filename, "rb");
+  if (!file)
+  {
+    fprintf(stderr, "Unable to open file");
+    return -1;
+  }
+	
+  //Get file length
+  fseek(file, 0, SEEK_END);
+  fileLen=ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  //Write file length to std out
+  r = write(1, &fileLen, sizeof(uint32_t));
+  if (r < 0) return r;
+
+  //Write file to std out
+  char buf[buflen];
+  int datalen;
+  while((datalen = fread(buf, 1, buflen, file)) > 0)
+  {
+    dataread += write(1, buf, datalen);
+  }
+  fclose(file);
+  return dataread;
 }

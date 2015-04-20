@@ -41,7 +41,7 @@ var toUInt32LE = function(len) {
 }
 
 var toStruct = function(opts) {
-  var buf = new Buffer(48)
+  var buf = new Buffer(52)
   var offset = -4
 
   // scale
@@ -78,6 +78,9 @@ var toStruct = function(opts) {
 
   // output format
   buf.writeUInt32LE(toFormatType(opts.format), offset += 4)
+  
+  // split
+  buf.writeUInt32LE(opts.split || 0, offset += 4)
 
   return buf
 }
@@ -156,13 +159,11 @@ var pool = function(opts) {
           stream = worker.queue[0]
           stream._read = drain
         }
-
         var block = child.stdout.read(Math.min(missing, child.stdout._readableState.length))
         if (!block) break
 
         missing -= block.length
         var drained = stream.push(block)
-
         if (!missing) {
           worker.queue.shift()
           stream.push(null)
@@ -173,7 +174,6 @@ var pool = function(opts) {
 
         if (!drained) break
       }
-
       draining = false
     }
 
