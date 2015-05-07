@@ -9,5 +9,6 @@ typedef struct {
 
 int io_read (int fn(size_t size, unsigned char *buf));
 int io_write (size_t size, unsigned char*);
+int io_write_file_to_stdout(char* filename);
 
 #endif

@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <wand/magick_wand.h>
 #include <string.h>
+#include <assert.h>
 #include "io.h"
 #include "debug.h"
+#include <archive.h>
+#include <archive_entry.h>
+#include <wand/magick_wand.h>
 
 #define MIN(x,y) (x < y ? x : y)
+
 
 static PixelWand *default_background = NULL;
 static char* formats[] = {"NOOP", "INFO", "JPEG", "GIF", "PNG", "BMP", "PDF"};
@@ -27,6 +31,7 @@ typedef struct {
   uint32_t page_start;
   uint32_t page_end;
   uint32_t format;
+  uint32_t split;
 } convert_t;
 
 typedef struct {
@@ -118,10 +123,8 @@ int convert_scale (MagickWand *input, convert_t *opts) {
       }
     }
   }
-
   if (!new_wid) new_wid = ratio * (double)new_hei;
   if (!new_hei) new_hei = (double)new_wid / ratio;
-
   return MagickScaleImage(input, new_wid, new_hei);
 }
 
@@ -153,8 +156,11 @@ int convert_adjoin (MagickWand *input, MagickWand **output, convert_t *opts) {
 
   if (!pages) return MagickFail;
 
-  MagickResetIterator(input);
-  *output = MagickAppendImages(input, 1);
+  if (!opts->split) {
+    MagickResetIterator(input);
+    input = MagickAppendImages(input, 1);
+  }
+  *output = input;
   if (*output == NULL) return MagickFail;
 
   if (opts->scale_height && !(opts->scale_options & MULTIPAGE)) opts->scale_height *= pages;
@@ -186,11 +192,14 @@ int convert (MagickWand *input, MagickWand **output, convert_t *opts, unsigned c
 
   input = *output;
 
-  if (convert_format(input, opts) != MagickPass) return -3;
-  if (convert_scale(input, opts) != MagickPass)  return -4;
-  if (convert_rotate(input, opts) != MagickPass) return -5;
-  if (convert_crop(input, opts) != MagickPass)   return -6;
-
+  MagickResetIterator(input);
+  MagickNextImage(input); // Has to be called after MagickResetIterator to set the first picture as the current
+  do {
+    if (convert_format(input, opts) != MagickPass) return -3;
+    if (convert_scale(input, opts) != MagickPass)  return -4;
+    if (convert_rotate(input, opts) != MagickPass) return -5;
+    if (convert_crop(input, opts) != MagickPass)   return -6;
+  } while (MagickNextImage(input));
   return 0;
 }
 
@@ -199,7 +208,39 @@ void destroy (MagickWand *input, MagickWand *output) {
   if (output != NULL && input != output) DestroyMagickWand(output);
 }
 
+int write_archive_from_mem(char *outname, MagickWand *wand)
+{
+  int archiveSize = 0;
+  int pageNumber = 1;
+  struct archive *a;
+  struct archive_entry *entry;
+  a = archive_write_new();
+  archive_write_set_format_ustar(a);
+  archive_write_open_filename(a, outname);
+  char filename[13];
+  MagickResetIterator(wand);
+  MagickNextImage(wand); // Has to be called after MagickResetIterator to set the first picture as the current
+  do { 
+    unsigned char *data;
+    size_t size;
+    data = MagickWriteImageBlob(wand, &size);
+    entry = archive_entry_new();
+    snprintf(filename, 13, "page_%d", pageNumber++);
+    archive_entry_set_pathname(entry, filename);
+    archive_entry_set_size(entry, size);
+    archive_entry_set_filetype(entry, AE_IFREG);
+    archive_entry_set_perm(entry, 0644);
+    archive_write_header(a, entry);
+    archiveSize += archive_write_data(a, data, size);
+    archive_entry_free(entry);
+  } while (MagickNextImage(wand));
+  archive_write_close(a);
+  archive_write_free(a);
+  return archiveSize;
+}
+
 int parse (size_t size, unsigned char *data) {
+  int writtendata = 0;
   MagickWand *input = NewMagickWand();
   MagickWand *output = input;
 
@@ -214,19 +255,28 @@ int parse (size_t size, unsigned char *data) {
   if (status < 0) {
     destroy(input, output);
     return status;
-  }
+  } 
 
   if (opts->format == INFO) {
     to_convert_info(output, &info_data);
     data = (unsigned char*) &info_data;
     size = sizeof(convert_info_t);
+    writtendata = io_write(size, data);
   } else {
-    data = MagickWriteImageBlob(output, &size);
+    if (opts->split) {
+      // If we split the file then we will make a tarball containing all the pages
+      char* filename;
+      filename = tmpnam (NULL);
+      size = write_archive_from_mem(filename, output);
+      writtendata = io_write_file_to_stdout(filename);
+      unlink(filename);
+    } else {
+      data = MagickWriteImageBlob(output, &size);
+      writtendata = io_write(size, data);
+    }
   }
-
-  status = io_write(size, data);
   destroy(input, output);
-  return status;
+  return writtendata;
 }
 
 int main (int argc, char *argv[]) {

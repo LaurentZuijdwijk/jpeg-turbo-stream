@@ -16,3 +16,7 @@ exports.png = function() {
 exports.bmp = function() {
   return fs.createReadStream(path.join(__dirname, 'test.bmp'))
 }
+
+exports.pdf = function() {
+  return fs.createReadStream(path.join(__dirname, 'test.pdf'))
+}
