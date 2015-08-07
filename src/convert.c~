@@ -275,7 +275,7 @@ int parse (size_t size, unsigned char *data) {
       writtendata = io_write(size, data);
     }
   }
-  //destroy(input, output);
+  destroy(input, output);
   return writtendata;
 }
 
