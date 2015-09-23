@@ -1,6 +1,10 @@
 #ifndef IO
 #define IO
 
+#include <inttypes.h>
+//#include <stddef.h>
+typedef unsigned long size_t;
+
 typedef struct {
   uint32_t used;
   uint32_t size;

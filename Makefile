@@ -1,8 +1,8 @@
-SRC=$(wildcard src/*.c)
+SRC=$(wildcard src/convert.c)
 
 bin/convert: $(SRC) Makefile
 	mkdir -p bin
-	gcc $(SRC) -o bin/convert -L/usr/local/lib -larchive -O `GraphicsMagickWand-config --cflags --cppflags --ldflags --libs` 
+	gcc $(SRC)  -o bin/convert -larchive -ljpeg -Lsrc
 
 clean:
 	rm -f bin/convert
