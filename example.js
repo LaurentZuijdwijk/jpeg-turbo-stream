@@ -3,8 +3,8 @@ var fs = require('fs')
 
 var convert = gm()
 
-fs.createReadStream('./output.jpg')
-  .pipe(convert({scale: {width: 200, height: 200}}))
+fs.createReadStream('./in.jpg')
+  .pipe(convert({scale: {width: 1000, height: 1000}}))
   .pipe(fs.createWriteStream('output2.jpg'))
 
 // fs.createReadStream('./test/fixtures/test.jpeg')
