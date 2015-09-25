@@ -41,14 +41,9 @@ typedef struct {
   uint32_t page_end;
   uint32_t format;
   uint32_t split;
+  uint32_t quality;
 } convert_t;
 
-typedef struct {
-  uint32_t width;
-  uint32_t height;
-  uint32_t format;
-  uint32_t pages;
-} convert_info_t;
 unsigned long out_size = 0;
   //free(data);
 unsigned char* pCompressed = 0;
@@ -104,7 +99,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
 // SS   SS     T     A     A  R    R      T   
 //   SSS       T     A     A  R     R     T   
 
-  syslog(LOG_INFO, "Proc: Create Decompress struct");
+  // syslog(LOG_INFO, "Proc: Create Decompress struct");
   // Allocate a new decompress struct, with the default error handler.
   // The default error handler will exit() on pretty much any issue,
   // so it's likely you'll want to replace it or supplement it with
@@ -113,7 +108,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   jpeg_create_decompress(&cinfo);
 
 
-  syslog(LOG_INFO, "Proc: Set memory buffer as source");
+  // syslog(LOG_INFO, "Proc: Set memory buffer as source");
   // Configure this decompressor to read its data from a memory 
   // buffer starting at unsigned char *jpg_buffer, which is jpg_size
   // long, and which must contain a complete jpg already.
@@ -126,7 +121,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   jpeg_mem_src(&cinfo, jpg_buffer, jpg_size);
 
 
-  syslog(LOG_INFO, "Proc: Read the JPEG header");
+  // syslog(LOG_INFO, "Proc: Read the JPEG header");
   // Have the decompressor scan the jpeg header. This won't populate
   // the cinfo struct output fields, but will indicate if the
   // jpeg is valid.
@@ -137,7 +132,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
     exit(EXIT_FAILURE);
   }
 
-  syslog(LOG_INFO, "Proc: Initiate JPEG decompression");
+  // syslog(LOG_INFO, "Proc: Initiate JPEG decompression");
   // By calling jpeg_start_decompress, you populate cinfo
   // and can then allocate your output bitmap buffers for
   // each scanline.
@@ -149,18 +144,20 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
 
 //  cinfo.image_width = options->scale_width;
 //  cinfo.image_height = options->scale_height;
+  // syslog(LOG_INFO, "Proc: scaling to  %d / %d ",
+  // cinfo.scale_num,  cinfo.scale_denom );   
 
   jpeg_start_decompress(&cinfo);
   
 
-  width = cinfo.image_width;
-  height = cinfo.image_width;
+  width = cinfo.image_width * cinfo.scale_num / cinfo.scale_denom;
+  height = cinfo.image_height * cinfo.scale_num / cinfo.scale_denom;
   
 
   pixel_size = cinfo.output_components;
 
-  syslog(LOG_INFO, "Proc: Image is %d by %d with %d components", 
-      width, height, pixel_size);
+  // syslog(LOG_INFO, "Proc: Image is %d by %d with %d components", 
+  //     width, height, pixel_size);
 
   bmp_size = width * height * pixel_size;
   bmp_buffer = (unsigned char*) malloc(bmp_size);
@@ -170,7 +167,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   row_stride = width * pixel_size;
 
 
-  syslog(LOG_INFO, "Proc: Start reading scanlines");
+  //syslog(LOG_INFO, "Proc: Start reading scanlines  %d", cinfo.output_height);
   //
   // Now that you have the decompressor entirely configured, it's time
   // to read out all of the scanlines of the jpeg.
@@ -185,6 +182,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   // scanline buffers. rec_outbuf_height is typically 1, 2, or 4, and 
   // at the default high quality decompression setting is always 1.
   while (cinfo.output_scanline < cinfo.output_height) {
+    // syslog(LOG_INFO, "Proc:  scanlines  %d", cinfo.output_height);
     unsigned char *buffer_array[1];
     buffer_array[0] = bmp_buffer + \
                (cinfo.output_scanline) * row_stride;
@@ -192,7 +190,7 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
     jpeg_read_scanlines(&cinfo, buffer_array, 1);
 
   }
-  syslog(LOG_INFO, "Proc: Done reading scanlines");
+ // syslog(LOG_INFO, "Proc: Done reading scanlines");
 
 
   // Once done reading *all* scanlines, release all internal buffers,
@@ -226,7 +224,6 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   // Write the decompressed bitmap out to a ppm file, just to make sure 
   // it worked. 
 
- // free(bmp_buffer);
 
   struct jpeg_compress_struct compress_info;
 
@@ -285,31 +282,9 @@ int convert (size_t size, unsigned char* data, convert_t* options) {
   /* This is an important step since it will release a good deal of memory. */
   jpeg_destroy_compress(&compress_info);
 
+    free(bmp_buffer);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  syslog(LOG_INFO, "End of decompression");
+  // syslog(LOG_INFO, "End of decompression");
   return 11;
 }
 
@@ -325,22 +300,17 @@ int parse (size_t size, unsigned char *data) {
   int status = convert(size, data, opts);
 
   io_write(out_size, pCompressed);
-syslog(LOG_INFO, "Proc: written  bytes of data");
 
 
-  //}
-  //destroy(input, output);
-  //free(pCompressed);
-  //out_size = 0;
+// syslog(LOG_INFO, "Proc: written  bytes of data  %lu", out_size);
+
+free(pCompressed);
+  out_size = 0;
 
 
   return 10;
 }
 
 int main (int argc, char *argv[]) {
-  while(1){
-    io_read(parse);
-
-  } 
-  return 1;
+   return io_read(parse);
 }
