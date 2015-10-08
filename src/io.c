@@ -46,6 +46,7 @@ int io_read (int fn(size_t size, unsigned char *buf)) {
     if (r <= 0) return r;
 
     r = fn(s.used, s.data);
+
     if (r < 0) return r;
   }
 
@@ -75,7 +76,7 @@ int io_write_file_to_stdout(char* filename) {
     fprintf(stderr, "Unable to open file");
     return -1;
   }
-	
+  
   //Get file length
   fseek(file, 0, SEEK_END);
   fileLen=ftell(file);

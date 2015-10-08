@@ -41,7 +41,7 @@ var toUInt32LE = function (len) {
 }
 
 var toStruct = function (opts) {
-    var buf = new Buffer(52)
+    var buf = new Buffer(40)
     var offset = -4
 
     // scale
@@ -71,17 +71,8 @@ var toStruct = function (opts) {
     // density
     buf.writeUInt32LE(opts.density || 0, offset += 4)
 
-    // pages
-    var page = typeof opts.page === 'number' ? [opts.page, opts.page] : opts.page || [0, 0]
-    buf.writeUInt32LE(page[0] || 0, offset += 4)
-    buf.writeUInt32LE(page[1] || 0, offset += 4)
-
-    // output format
-    buf.writeUInt32LE(toFormatType(opts.format), offset += 4)
-
-    // split
-    buf.writeUInt32LE(opts.split || 0, offset += 4)
-
+    // quality
+    buf.writeUInt32LE(opts.quality || 75, offset += 4)
     return buf
 }
 
@@ -189,7 +180,7 @@ var pool = function (opts) {
         var buffer = [toStruct(opts)]
         var destroyed = false
         var wait
-
+        console.log('function queuee')
         dup.on('finish', function () {
             buffer = Buffer.concat(buffer)
             worker.process.stdin.write(toUInt32LE(buffer.length))
@@ -203,6 +194,7 @@ var pool = function (opts) {
                 return
             }
 
+            // console.log('write', data.length)
             buffer.push(data)
             cb()
         }
